@@ -1,0 +1,36 @@
+{
+  "name": "docker-pool",
+  "description": "Docker container pool",
+  "author": "Alex Wolfe <alex@activeprospect.com>",
+  "version": "0.0.1",
+  "main": "lib/pool.js",
+  "licenses" : [
+    {
+      "type" : "MIT",
+      "url" : "https://github.com/activeprospect/node-docker-pool/raw/master/LICENSE"
+    }
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/activeprospect/node-docker-pool.git"
+  },
+  "engines": {
+    "node": ">=0.10.0"
+  },
+  "scripts": {
+    "test": "cake build test",
+    "prepublish": "cake build"
+  },
+  "dependencies": {
+    "generic-pool": ">= 2.0.4",
+    "dockerode": ">= 1.2.5",
+    "async": ">= 0.2.10",
+    "shellwords": ">= 0.1.0"
+  },
+  "devDependencies": {
+    "bufferstream": ">= 0.6.2",
+    "coffee-script": ">= 1.7.0",
+    "mocha": ">= 1.17.0",
+    "chai": ">= 1.9.0"
+  }
+}

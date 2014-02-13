@@ -1,0 +1,6 @@
+/lib
+.idea
+.DS_Store
+.vagrant
+log
+node_modules
