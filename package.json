@@ -24,7 +24,7 @@
   "dependencies": {
     "bunyan": ">= 0.22.1",
     "generic-pool": ">= 2.0.4",
-    "dockerode": ">= 1.2.5",
+    "dockerode": ">= 1.2.6",
     "async": ">= 0.2.10",
     "shellwords": ">= 0.1.0"
   },
