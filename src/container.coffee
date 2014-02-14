@@ -1,4 +1,5 @@
 path = require('path')
+bunyan = require('bunyan')
 EventEmitter = require('events').EventEmitter
 shellwords = require('shellwords')
 Docker = require('dockerode')
@@ -9,12 +10,15 @@ class Container extends EventEmitter
     @_socketPath = options.dockerSocket || '/var/run/docker.sock'
     @_docker = new Docker(socketPath: @_socketPath)
 
+
     @id = null
     @name = null
     @pid = null
     @ip = null
     @startedAt = null
+    @destroyCount = 0
 
+    @_log = options.log?.child(module: 'container') || bunyan.createLogger(name: 'docker-pool', module: 'container')
     @_image = options.image
     @_command = shellwords.split(options.command)
     @_volumes = options.volumes || []
@@ -27,29 +31,47 @@ class Container extends EventEmitter
 
   start: (callback) ->
     @_createContainer (err) =>
-      return callback(err) if err
+      if err
+        @_log.error(err, 'could not create')
+        return callback(err)
+      @_log.info('created')
       @emit('create')
       @_startContainer callback
 
   destroy: (callback) ->
+    @_log.info(retries: @destroyCount, 'destroying')
+
     cb = (err) ->
       callback(err) if callback
 
     @_container.stop t: @_stopTimeout, (err) =>
       notFound = err and err.message.match(/404/)
       if err
-        return cb(err) unless notFound
+        if notFound
+          @_log.warn('cannot be stopped: not found')
+        else
+          @_log.error(err, 'cannot be stopped')
+          return cb(err)
 
-      @emit('stop') unless notFound
+      unless notFound
+        @_log.info('stopped')
+        @emit('stop')
 
       @_container.remove (err) =>
         notFound = err and err.message.match(/404/)
         if err
-          return cb(err) unless notFound
+          if notFound
+            @_log.warn('cannot be removed: not found')
+          else
+            @_log.error(err, 'cannot be removed')
+            return cb(err)
 
         unless notFound
           @emit('remove')
           @emit('destroy')
+          @_log.info('removed')
+          @_log.info('destroyed')
+
         cb()
 
   restart: (callback) ->
@@ -90,7 +112,8 @@ class Container extends EventEmitter
 
     @_docker.createContainer options, (err, container) =>
       return callback(err, container) if err
-      @id = container.id
+      @id = container.id[0...12]
+      @_log = @_log.child(container: @id)
       @_container = container
       callback()
 
@@ -102,9 +125,16 @@ class Container extends EventEmitter
       Binds: binds
 
     @_container.start options, (err) =>
-      return callback(err) if err
+      if (err)
+        @_log.error(err, 'could not start')
+        return callback(err, container)
+      @_log.info('started')
+
       @info (err, info) =>
-        return callback(err) if (err)
+        if (err)
+          @_log.error(err, 'could not get info')
+          return callback(err, info)
+        @_log.info('got info')
         @_parseInfo(info)
         @emit('start')
         callback(null, @)

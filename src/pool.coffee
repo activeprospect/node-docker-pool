@@ -1,13 +1,18 @@
 PoolFactory = require('generic-pool').Pool
 async = require 'async'
+bunyan = require 'bunyan'
 Container = require './container'
 
 class Pool
   constructor: (options={}) ->
+    @_log = options.log || bunyan.createLogger(name: 'docker-pool', module: 'pool')
+    delete options.log
+
     @_maxDestroyAttempts = options.maxDestroyAttempts || 10
     delete options.maxDestroyAttempts
 
     @_containerOptions = options.container
+    @_containerOptions.log = @_log
     delete options.container
 
     for key, value of options
@@ -50,8 +55,7 @@ class Pool
       giveUp = @_maxDestroyAttempts <= container.destroyCount
       if err
         cb(err)
-        if giveUp
-        else
+        unless giveUp
           @_enqueueDestroy container, callback
       else
         delete @_containers[container.id]
@@ -62,6 +66,7 @@ class Pool
     container.start (err) =>
       return callback(err) if err
       @_containers[container.id] = container
+      @_log.info(container: container.id, 'ready')
       callback(null, container)
 
   _destroyWorker: (container, callback) =>

@@ -1,4 +1,6 @@
 assert = require('chai').assert
+bunyan = require('bunyan')
+ringbuffer = new bunyan.RingBuffer({ limit: 10 })
 net = require('net')
 BufferStream = require('bufferstream')
 Pool = require('../src/pool')
@@ -18,9 +20,11 @@ describe 'Container', ->
 
     beforeEach (done) ->
       pool = new Pool
+        log: bunyan.createLogger(name: 'docker-pool', stream: ringbuffer)
         container:
           image: 'ubuntu'
           command: "/bin/sh -c \"trap 'exit' TERM; while true; do sleep 1; done\""
+
 
       pool.create (err, c) ->
         return done(err) if err
@@ -54,6 +58,7 @@ describe 'Container', ->
 
     beforeEach (done) ->
       pool = new Pool
+        log: bunyan.createLogger(name: 'docker-pool', stream: ringbuffer)
         container:
           image: 'activeprospect/docker-pool-test'
           ports: [5555]

@@ -1,4 +1,6 @@
 assert = require('chai').assert
+bunyan = require('bunyan')
+ringbuffer = new bunyan.RingBuffer({ limit: 10 })
 async = require('async')
 Pool = require('../src/pool')
 
@@ -8,6 +10,7 @@ describe 'Pool', ->
 
   beforeEach ->
     pool = new Pool
+      log: bunyan.createLogger(name: 'docker-pool', stream: ringbuffer)
       container:
         image: 'ubuntu'
         command: "/bin/sh -c \"trap 'exit' TERM; while true; do sleep 1; done\""
@@ -22,7 +25,7 @@ describe 'Pool', ->
 
   it 'should acquire container', (done) ->
     pool.acquire (err, container) ->
-      assert.equal container.id.length, 64
+      assert.equal container.id.length, 12
       done(err)
 
   it 'should acquire same container', (done) ->
