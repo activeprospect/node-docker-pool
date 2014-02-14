@@ -70,7 +70,6 @@ class Container extends EventEmitter
           @emit('remove')
           @emit('destroy')
           @_log.info('removed')
-          @_log.info('destroyed')
 
         cb()
 

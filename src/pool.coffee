@@ -46,18 +46,25 @@ class Pool
     @_enqueueDestroy container
 
   _enqueueDestroy: (container, callback) ->
+    @_log.info(container: container.id, "enqueuing for destroy (awaiting #{@_destroyQueue.length()} others)")
+
     cb = (err) ->
       callback(err) if callback
 
     container.destroyCount ?= 0
     @_destroyQueue.push container, (err) =>
       container.destroyCount += 1
+      log = @_log.child(container: container.id, retries: container.destroyCount)
       giveUp = @_maxDestroyAttempts <= container.destroyCount
       if err
         cb(err)
-        unless giveUp
+        if giveUp
+          log.info 'cannot destroy: giving up'
+        else
+          log.info 'retry destroy'
           @_enqueueDestroy container, callback
       else
+        log.info 'destroyed'
         delete @_containers[container.id]
         cb()
 
