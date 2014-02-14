@@ -17,6 +17,9 @@ describe 'Pool', ->
     if pool
       pool.destroyAll done
 
+  it 'should callback quickly when there are no containers to destroy', (done) ->
+    pool.destroyAll done
+
   it 'should acquire container', (done) ->
     pool.acquire (err, container) ->
       assert.equal container.id.length, 64

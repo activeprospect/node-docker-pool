@@ -31,6 +31,8 @@ class Pool
   destroyAll: (callback) ->
     for _, container of @_containers
       @_enqueueDestroy container
+    if @_destroyQueue.length() == 0
+      return callback()
     @_destroyQueue.drain = =>
       @_destroyQueue.drain = null
       callback()
