@@ -59,14 +59,14 @@ class Pool
       if err
         if container.destroyCount >= @_maxDestroyAttempts
           container._log.info 'cannot destroy: giving up'
-          callback(err)
+          callback(err) if callback
         else
           container._log.info 'retry destroy'
           retry = =>
             @_destroyWorker container, callback
           setTimeout retry, 1000
       else
-        callback()
+        callback() if callback
 
 
   _createWorker: (_, callback) =>
