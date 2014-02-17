@@ -18,10 +18,10 @@ describe 'Pool', ->
 
   afterEach (done) ->
     if pool
-      pool.destroyAll done
+      pool.drain done
 
   it 'should callback quickly when there are no containers to destroy', (done) ->
-    pool.destroyAll done
+    pool.drain done
 
   it 'should acquire container', (done) ->
     pool.acquire (err, container) ->

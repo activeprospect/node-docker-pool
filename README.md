@@ -91,9 +91,9 @@ pool.acquire(function(err, container) {
 
 
 process.on('SIGINT', function() {
-  // to clean up your pool's containers, use the destroyAll function
+  // to clean up your pool's containers, use the drain function
   // this will stop and remove all containers created by the pool
-  pool.destroyAll(function() {
+  pool.drain(function() {
     exit();
   });
 });

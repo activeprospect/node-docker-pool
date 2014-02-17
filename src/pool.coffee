@@ -38,20 +38,30 @@ class Pool
     @_createQueue.push {}, callback
 
 
-  destroyAll: (callback) ->
-    containers = []
-    for _, container of @_containers
-      containers.push container
+  drain: (callback) ->
+    @_log.info('draining')
+    @_pool.min = 0
+    teardown = =>
+      @_log.info('drained')
+      containers = []
+      for _, container of @_containers
+        containers.push container
 
-    if containers.length > 0 || @_destroyQueue.length() > 0
-      drain = @_destroyQueue.drain
-      @_destroyQueue.drain = =>
-        @_destroyQueue.drain = drain
+      if containers.length > 0 || @_destroyQueue.length() > 0
+        drain = @_destroyQueue.drain
+        @_destroyQueue.drain = =>
+          @_destroyQueue.drain = drain
+          callback()
+        for container in containers
+          @destroy container, (->)
+      else
         callback()
-      for container in containers
-        @destroy container, (->)
+
+    if @_pool.waitingClientsCount() > 0
+      @_pool.drain ->
+        teardown()
     else
-      callback()
+      teardown()
 
 
   destroy: (container, callback) ->
@@ -66,6 +76,7 @@ class Pool
             @_destroyWorker container, callback
           setTimeout retry, 1000
       else
+        delete @_containers[container.id]
         callback() if callback
 
 

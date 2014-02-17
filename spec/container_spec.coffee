@@ -13,7 +13,7 @@ describe 'Container', ->
 
   afterEach (done) ->
     if pool
-      pool.destroyAll done
+      pool.drain done
 
 
   describe 'that is responsive', ->
@@ -64,13 +64,12 @@ describe 'Container', ->
           ports: [5555]
           command: 'ncat -e /bin/cat -k -t -l 5555'
 
-      pool.create (err, c) ->
+      pool.acquire (err, c) ->
         return done(err) if err
         container = c
         done()
 
     it 'should respond on container port', (done) ->
-      @timeout(10000)
       stream = new BufferStream({size:'flexible'})
       stream.split('\r\n')
       stream.on 'split', (data) =>
