@@ -4,6 +4,7 @@ bunyan = require 'bunyan'
 Container = require './container'
 
 class Pool
+
   constructor: (options={}) ->
     @_log = options.log || bunyan.createLogger(name: 'docker-pool', module: 'pool')
     delete options.log
@@ -24,49 +25,38 @@ class Pool
     @_containers = {}
     @_pool = new PoolFactory(@)
 
+
   acquire: (callback, priority) =>
     @_pool.acquire callback, priority
+
 
   release: (container) ->
     @_pool.release(container)
 
+
   create: (callback) =>
     @_createQueue.push {}, callback
 
+
   destroyAll: (callback) ->
+    containers = []
     for _, container of @_containers
-      @_enqueueDestroy container
-    if @_destroyQueue.length() == 0
-      return callback()
-    @_destroyQueue.drain = =>
-      @_destroyQueue.drain = null
+      containers.push container
+
+    if containers.length > 0 || @_destroyQueue.length() > 0
+      drain = @_destroyQueue.drain
+      @_destroyQueue.drain = =>
+        @_destroyQueue.drain = drain
+        callback()
+      for container in containers
+        @_destroyQueue.push container
+    else
       callback()
 
-  destroy: (container) ->
-    @_enqueueDestroy container
 
-  _enqueueDestroy: (container, callback) ->
-    @_log.info(container: container.id, "enqueuing for destroy (awaiting #{@_destroyQueue.length()} others)")
+  destroy: (container, callback) ->
+    @_destroyQueue.push container, callback
 
-    cb = (err) ->
-      callback(err) if callback
-
-    container.destroyCount ?= 0
-    @_destroyQueue.push container, (err) =>
-      container.destroyCount += 1
-      log = @_log.child(container: container.id, retries: container.destroyCount)
-      giveUp = @_maxDestroyAttempts <= container.destroyCount
-      if err
-        cb(err)
-        if giveUp
-          log.info 'cannot destroy: giving up'
-        else
-          log.info 'retry destroy'
-          @_enqueueDestroy container, callback
-      else
-        log.info 'destroyed'
-        delete @_containers[container.id]
-        cb()
 
   _createWorker: (_, callback) =>
     container = new Container(@_containerOptions)
@@ -76,8 +66,20 @@ class Pool
       @_log.info(container: container.id, 'ready')
       callback(null, container)
 
+
   _destroyWorker: (container, callback) =>
-    container.destroy callback
+    container.destroy (err) =>
+      if err
+        if @_maxDestroyAttempts <= container.destroyCount
+          container._log.info 'cannot destroy: giving up'
+          callback(err)
+        else
+          container._log.info 'retry destroy'
+          retry = =>
+            @_destroyWorker container, callback
+          setTimeout retry, 1000
+      else
+        callback()
 
 
 

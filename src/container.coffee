@@ -1,5 +1,6 @@
 path = require('path')
 bunyan = require('bunyan')
+async = require('async')
 EventEmitter = require('events').EventEmitter
 shellwords = require('shellwords')
 Docker = require('dockerode')
@@ -9,7 +10,6 @@ class Container extends EventEmitter
   constructor: (options={}) ->
     @_socketPath = options.dockerSocket || '/var/run/docker.sock'
     @_docker = new Docker(socketPath: @_socketPath)
-
 
     @id = null
     @name = null
@@ -29,6 +29,7 @@ class Container extends EventEmitter
     @_stopTimeout = parseInt(options.stopTimeout || 10)
     @_container = null
 
+
   start: (callback) ->
     @_createContainer (err) =>
       if err
@@ -38,12 +39,8 @@ class Container extends EventEmitter
       @emit('create')
       @_startContainer callback
 
-  destroy: (callback) ->
-    @_log.info(retries: @destroyCount, 'destroying')
 
-    cb = (err) ->
-      callback(err) if callback
-
+  stop: (callback) =>
     @_container.stop t: @_stopTimeout, (err) =>
       notFound = err and err.message.match(/404/)
       if err
@@ -51,27 +48,57 @@ class Container extends EventEmitter
           @_log.warn('cannot be stopped: not found')
         else
           @_log.error(err, 'cannot be stopped')
-          return cb(err)
+          return callback(err)
 
       unless notFound
         @_log.info('stopped')
         @emit('stop')
 
-      @_container.remove (err) =>
-        notFound = err and err.message.match(/404/)
-        if err
-          if notFound
-            @_log.warn('cannot be removed: not found')
-          else
-            @_log.error(err, 'cannot be removed')
-            return cb(err)
+      callback()
 
-        unless notFound
-          @emit('remove')
-          @emit('destroy')
-          @_log.info('removed')
 
-        cb()
+  remove: (callback) =>
+    @_container.remove (err) =>
+      notFound = err and err.message.match(/404/)
+      if err
+        if notFound
+          @_log.warn('cannot be removed: not found')
+        else
+          @_log.error(err, 'cannot be removed')
+          return callback(err)
+
+      unless notFound
+        @emit('remove')
+        @_log.info('removed')
+
+      callback()
+
+
+  destroy: (callback) ->
+    @_log.info(retries: @destroyCount, 'destroying')
+
+    cb = callback
+    callback = (err) ->
+      cb(err) if cb
+
+    timedOut = false
+
+    timeoutCallback = =>
+      timedOut = true
+      err = new Error('timeout waiting for destroy')
+      @_log.error(retries: @destroyCount, err)
+      callback(err)
+
+    timeout = setTimeout(timeoutCallback, 5000)
+
+    async.series [@stop, @remove], (err) =>
+      return if timedOut
+      clearTimeout(timeout)
+      unless err
+        @emit('destroy')
+        @_log.info('destroyed')
+      callback(err) if callback
+
 
   restart: (callback) ->
     cb = (err) ->
@@ -81,6 +108,7 @@ class Container extends EventEmitter
       return cb(err) if err
       @emit('restart')
       cb()
+
 
   info: (callback) ->
     @_container.inspect callback
@@ -116,6 +144,7 @@ class Container extends EventEmitter
       @_container = container
       callback()
 
+
   _startContainer: (callback) ->
     binds = Object.keys(@_binds).map (hostBind) =>
       "#{hostBind}:#{@_binds[hostBind]}"
@@ -137,6 +166,7 @@ class Container extends EventEmitter
         @_parseInfo(info)
         @emit('start')
         callback(null, @)
+
 
   _parseInfo: (info) ->
     if info
