@@ -76,6 +76,7 @@ class Container extends EventEmitter
 
   destroy: (callback) ->
     @_log.info(retries: @destroyCount, 'destroying')
+    @destroyCount++
 
     cb = callback
     callback = (err) ->
@@ -91,7 +92,10 @@ class Container extends EventEmitter
 
     timeout = setTimeout(timeoutCallback, 5000)
 
-    async.series [@stop, @remove], (err) =>
+    pause = ->
+      setTimeout(callback, 1000)
+
+    async.series [@stop, pause, @remove], (err) =>
       return if timedOut
       clearTimeout(timeout)
       unless err
@@ -155,7 +159,7 @@ class Container extends EventEmitter
     @_container.start options, (err) =>
       if (err)
         @_log.error(err, 'could not start')
-        return callback(err, container)
+        return callback(err, @)
       @_log.info('started')
 
       @info (err, info) =>
