@@ -49,13 +49,24 @@ class Pool
         @_destroyQueue.drain = drain
         callback()
       for container in containers
-        @_destroyQueue.push container
+        @destroy container, (->)
     else
       callback()
 
 
   destroy: (container, callback) ->
-    @_destroyQueue.push container, callback
+    @_destroyQueue.push container, (err) =>
+      if err
+        if container.destroyCount >= @_maxDestroyAttempts
+          container._log.info 'cannot destroy: giving up'
+          callback(err)
+        else
+          container._log.info 'retry destroy'
+          retry = =>
+            @_destroyWorker container, callback
+          setTimeout retry, 1000
+      else
+        callback()
 
 
   _createWorker: (_, callback) =>
@@ -68,18 +79,8 @@ class Pool
 
 
   _destroyWorker: (container, callback) =>
-    container.destroy (err) =>
-      if err
-        if @_maxDestroyAttempts <= container.destroyCount
-          container._log.info 'cannot destroy: giving up'
-          callback(err)
-        else
-          container._log.info 'retry destroy'
-          retry = =>
-            @_destroyWorker container, callback
-          setTimeout retry, 1000
-      else
-        callback()
+    container.destroy callback
+
 
 
 

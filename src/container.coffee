@@ -92,7 +92,7 @@ class Container extends EventEmitter
 
     timeout = setTimeout(timeoutCallback, 5000)
 
-    pause = ->
+    pause = (callback) ->
       setTimeout(callback, 1000)
 
     async.series [@stop, pause, @remove], (err) =>
