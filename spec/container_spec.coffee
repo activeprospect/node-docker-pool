@@ -14,6 +14,8 @@ describe 'Container', ->
   afterEach (done) ->
     if pool
       pool.drain done
+    else
+      done()
 
 
   describe 'that is responsive', ->

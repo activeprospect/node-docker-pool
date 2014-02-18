@@ -41,7 +41,13 @@ class Container extends EventEmitter
 
 
   stop: (callback) =>
+    ms = (@_stopTimeout * 1000) + 5000
+    timeout = @_establishTimeout 'stop', ms, callback
+    @_log.info(retries: @destroyCount, timeout: ms, 'stopping')
+
     @_container.stop t: @_stopTimeout, (err) =>
+      return if timeout.fired
+      clearTimeout(timeout)
       notFound = err and err.message.match(/404/)
       if err
         if notFound
@@ -58,7 +64,14 @@ class Container extends EventEmitter
 
 
   remove: (callback) =>
+    ms = 5000
+    timeout = @_establishTimeout 'remove', ms, callback
+    @_log.info(retries: @destroyCount, timeout: ms, 'removing')
+
     @_container.remove (err) =>
+      return if timeout.fired
+      clearTimeout(timeout)
+
       notFound = err and err.message.match(/404/)
       if err
         if notFound
@@ -82,22 +95,10 @@ class Container extends EventEmitter
     callback = (err) ->
       cb(err) if cb
 
-    timedOut = false
-
-    timeoutCallback = =>
-      timedOut = true
-      err = new Error('timeout waiting for destroy')
-      @_log.error(retries: @destroyCount, err)
-      callback(err)
-
-    timeout = setTimeout(timeoutCallback, 5000)
-
     pause = (callback) ->
       setTimeout(callback, 1000)
 
     async.series [@stop, pause, @remove], (err) =>
-      return if timedOut
-      clearTimeout(timeout)
       unless err
         @emit('destroy')
         @_log.info('destroyed')
@@ -117,6 +118,17 @@ class Container extends EventEmitter
   info: (callback) ->
     @_container.inspect callback
 
+
+  _establishTimeout: (action, ms, callback) =>
+    timeoutCallback = =>
+      timeout.fired = true
+      err = new Error("timeout waiting for #{action}")
+      @_log.error(retries: @destroyCount, err.message)
+      callback(err)
+
+    timeout = setTimeout(timeoutCallback, ms)
+    timeout.fired = false
+    timeout
 
   _createContainer: (callback) ->
     exposedPorts = @_ports.reduce ((ports, containerPort) =>
