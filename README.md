@@ -72,7 +72,7 @@ var pool = new Pool({
 
 pool.validate = function(container) {
   // containers older than 60s should not be used
-  return new Date() - container.createdAt > 60000;
+  return new Date() - container.startedAt > 60000;
 };
 
 
