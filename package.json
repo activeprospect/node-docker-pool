@@ -2,7 +2,7 @@
   "name": "docker-pool",
   "description": "Docker container pool",
   "author": "Alex Wolfe <alex@activeprospect.com>",
-  "version": "0.0.10",
+  "version": "0.0.11",
   "main": "lib/pool.js",
   "licenses" : [
     {
