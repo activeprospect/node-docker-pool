@@ -34,10 +34,10 @@ class Pool
     @_pool.release(container)
 
 
-  create: (callback) =>
-    @_createQueue.push {}, callback
-
-
+  #
+  # Public: Wait for all currently acquired containers to finish their current job, then dispose of all containers.
+  # An error will be thrown if acquire is called after drain.
+  #
   drain: (callback) ->
     @_log.info('draining')
     @_pool.min = 0
@@ -53,7 +53,7 @@ class Pool
           @_destroyQueue.drain = drain
           callback()
         for container in containers
-          @destroy container, (->)
+          @dispose container
       else
         callback()
 
@@ -64,22 +64,43 @@ class Pool
       teardown()
 
 
-  destroy: (container, callback) ->
-    @_destroyQueue.push container, (err) =>
+  #
+  # Public: Dispose of a container by removing it from the pool and destroying it.
+  #
+  dispose: (container, callback) ->
+    container.on 'destroy', callback if callback
+    @_pool.destroy(container)
+
+
+  #
+  # Internal: Used by the pool to create a new container
+  #
+  create: (callback) =>
+    @_createQueue.push {}, callback
+
+
+  #
+  # Internal: Used by the pool to destroy a container
+  #
+  destroy: (container) ->
+    afterDestroy = (err) =>
       if err
         if container.destroyCount >= @_maxDestroyAttempts
           container._log.info 'cannot destroy: giving up'
-          callback(err) if callback
         else
           container._log.info 'retry destroy'
           retry = =>
-            @_destroyWorker container, callback
+            @_destroyWorker container, afterDestroy
           setTimeout retry, 1000
       else
         delete @_containers[container.id]
-        callback() if callback
+
+    @_destroyQueue.push container, afterDestroy
 
 
+  #
+  # Private: Creates a new container. This function is used as the worker for the @_createQueue.
+  #
   _createWorker: (_, callback) =>
     container = new Container(@_containerOptions)
     container.start (err) =>
@@ -89,6 +110,9 @@ class Pool
       callback(null, container)
 
 
+  #
+  # Private: Destroys a container. This function is used as the worker for the @_destroyQueue.
+  #
   _destroyWorker: (container, callback) =>
     container.destroy callback
 

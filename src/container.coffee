@@ -99,9 +99,8 @@ class Container extends EventEmitter
       setTimeout(callback, 1000)
 
     async.series [@stop, pause, @remove], (err) =>
-      unless err
-        @emit('destroy')
-        @_log.info('destroyed')
+      @emit('destroy', err)
+      @_log.info('destroyed') unless err
       callback(err) if callback
 
 
