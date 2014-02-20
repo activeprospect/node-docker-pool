@@ -36,16 +36,16 @@ var pool = new Pool({
 
   // int number of containers that should be created concurrently - this setting
   // throttles requests to the docker daemon for container creation
-  createConcurrency: 1
+  createConcurrency: 1,
 
   // int number of containers that can by disposed of concurrently - this setting
   // throttles requests to the docker daemon for container stop and remove
-  disposeConcurrency: 1
+  disposeConcurrency: 1,
 
   // int milliseconds after container start that Docker Pool should
   // wait before returning the container in the acquire callback - this setting
   // allows some time for the docker container process to start
-  readyPause: 50
+  readyPause: 50,
 
   // options for containers
   container: {
