@@ -2,5 +2,6 @@
 .idea
 .DS_Store
 .vagrant
+npm-debug.log
 log
 node_modules
