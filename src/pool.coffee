@@ -9,8 +9,17 @@ class Pool
     @_log = options.log || bunyan.createLogger(name: 'docker-pool', module: 'pool')
     delete options.log
 
-    @_maxDestroyAttempts = options.maxDestroyAttempts || 10
+    @_maxDestroyAttempts = @_option options.maxDestroyAttempts, 10
     delete options.maxDestroyAttempts
+
+    @_readyPause = @_option options.readyPause, 50
+    delete options.readyPause
+
+    @_createConcurrency = @_option options.createConcurrency, 1
+    delete options.createConcurrency
+
+    @_disposeConcurrency = @_option options.disposeConcurrency, 1
+    delete options.disposeConcurrency
 
     @_containerOptions = options.container
     @_containerOptions.log = @_log
@@ -19,8 +28,8 @@ class Pool
     for key, value of options
       @[key] = value
 
-    @_createQueue = async.queue(@_createWorker, 1)
-    @_destroyQueue = async.queue(@_destroyWorker, 1)
+    @_createQueue = async.queue(@_createWorker, @_createConcurrency)
+    @_destroyQueue = async.queue(@_destroyWorker, @_disposeConcurrency)
 
     @_containers = {}
     @_pool = new PoolFactory(@)
@@ -31,6 +40,7 @@ class Pool
 
 
   release: (container) ->
+    container._log.info('releasing')
     @_pool.release(container)
 
 
@@ -41,7 +51,7 @@ class Pool
   drain: (callback) ->
     @_log.info('draining')
     @_pool.min = 0
-    teardown = =>
+    @_pool.drain =>
       @_log.info('drained')
       containers = []
       for _, container of @_containers
@@ -57,11 +67,6 @@ class Pool
       else
         callback()
 
-    if @_pool.waitingClientsCount() > 0
-      @_pool.drain ->
-        teardown()
-    else
-      teardown()
 
 
   #
@@ -106,9 +111,11 @@ class Pool
     container.start (err) =>
       return callback(err) if err
       @_containers[container.id] = container
-      @_log.info(container: container.id, 'ready')
-      callback(null, container)
-
+      @_log.info(container: container.id, 'started')
+      ready = =>
+        @_log.info(container: container.id, 'ready')
+        callback(null, container)
+      setTimeout(ready, @_readyPause)
 
   #
   # Private: Destroys a container. This function is used as the worker for the @_destroyQueue.
@@ -117,7 +124,8 @@ class Pool
     container.destroy callback
 
 
-
+  _option: (value, deflt) ->
+    if value? then value else deflt
 
 module.exports = Pool
 

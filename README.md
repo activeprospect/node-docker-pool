@@ -34,6 +34,19 @@ var pool = new Pool({
   // relative priority in the queue if no containers are available
   priorityRange: 1,
 
+  // int number of containers that should be created concurrently - this setting
+  // throttles requests to the docker daemon for container creation
+  createConcurrency: 1
+
+  // int number of containers that can by disposed of concurrently - this setting
+  // throttles requests to the docker daemon for container stop and remove
+  disposeConcurrency: 1
+
+  // int milliseconds after container start that Docker Pool should
+  // wait before returning the container in the acquire callback - this setting
+  // allows some time for the docker container process to start
+  readyPause: 50
+
   // options for containers
   container: {
 
@@ -60,7 +73,7 @@ var pool = new Pool({
     // share of CPU given to container relative to all other containers (optional, default 1)
     cpuShare: 1,
 
-    // int seconds to allowed on stop before container will be killed (optional, default 10)
+    // int seconds to be allowed on stop before container will be killed (optional, default 10)
     stopTimeout: 10
   }
 });
@@ -110,5 +123,6 @@ Docker cannot be run on Mac OS X. For this reason, you must use Vagrant which ru
 * Change to the directory containing this module using `cd /vagrant`
 * Install dependencies using `npm install`
 * Run the tests using `npm test`
+* After the tests run, there should be no containers listed with `docker ps -a`
 * To stop docker containers running in the vagrant instance, use `docker stop $(docker ps -a -q)`
 * To remove docker containers running in the vagrant instance, use `docker rm $(docker ps -a -q)`
