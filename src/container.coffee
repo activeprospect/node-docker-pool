@@ -89,7 +89,6 @@ class Container extends EventEmitter
 
   destroy: (callback) ->
     @_log.info(retries: @destroyCount, 'destroying')
-    @destroyCount++
 
     cb = callback
     callback = (err) ->
@@ -99,6 +98,7 @@ class Container extends EventEmitter
       setTimeout(callback, 1000)
 
     async.series [@stop, pause, @remove], (err) =>
+      @destroyCount++
       @emit('destroy', err)
       @_log.info('destroyed') unless err
       callback(err) if callback
