@@ -12,23 +12,25 @@ describe 'Container', ->
   pool = null
 
   afterEach (done) ->
+    pool.release(container) if container
     if pool
       pool.drain done
     else
       done()
 
 
+
+
   describe 'that is responsive', ->
 
     beforeEach (done) ->
       pool = new Pool
-        log: bunyan.createLogger(name: 'docker-pool', stream: ringbuffer)
+        log: bunyan.createLogger name: 'docker-pool', stream: ringbuffer
         container:
           image: 'ubuntu'
           command: "/bin/sh -c \"trap 'exit' TERM; while true; do sleep 1; done\""
 
-
-      pool.create (err, c) ->
+      pool.acquire (err, c) ->
         return done(err) if err
         container = c
         done()
@@ -60,7 +62,7 @@ describe 'Container', ->
 
     beforeEach (done) ->
       pool = new Pool
-        log: bunyan.createLogger(name: 'docker-pool', stream: ringbuffer)
+        log: bunyan.createLogger name: 'docker-pool', stream: ringbuffer
         container:
           image: 'activeprospect/docker-pool-test'
           ports: [5555]

@@ -10,7 +10,7 @@ describe 'Pool', ->
 
   beforeEach ->
     pool = new Pool
-      log: bunyan.createLogger(name: 'docker-pool', stream: ringbuffer)
+      log: bunyan.createLogger name: 'docker-pool', stream: ringbuffer
       container:
         image: 'ubuntu'
         command: "/bin/sh -c \"trap 'exit' TERM; while true; do sleep 1; done\""
@@ -26,6 +26,7 @@ describe 'Pool', ->
   it 'should acquire container', (done) ->
     pool.acquire (err, container) ->
       assert.equal container.id.length, 12
+      pool.release(container)
       done(err)
 
   it 'should acquire same container', (done) ->
@@ -36,6 +37,7 @@ describe 'Pool', ->
       pool.acquire (err, container2) ->
         return done(err) if err
         assert.equal container1.id, container2.id
+        pool.release(container2)
         done()
 
   it 'should acquire different containers', (done) ->
@@ -45,4 +47,6 @@ describe 'Pool', ->
       pool.acquire (err, container2) ->
         return done(err) if err
         assert.notEqual container1.id, container2.id
+        pool.release(container1)
+        pool.release(container2)
         done()
