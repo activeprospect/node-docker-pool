@@ -12,8 +12,8 @@ class Pool
     @_maxDestroyAttempts = @_option options.maxDestroyAttempts, 10
     delete options.maxDestroyAttempts
 
-    @_readyPause = @_option options.readyPause, 50
-    delete options.readyPause
+    @_readyCheck = @_option options.readyCheck, (container, retryCount, callback) ->
+      callback(null, true, 0 ) # default callback indicates immediate readiness
 
     @_createConcurrency = @_option options.createConcurrency, 1
     delete options.createConcurrency
@@ -112,10 +112,23 @@ class Pool
       return callback(err) if err
       @_containers[container.id] = container
       @_log.info(container: container.id, 'started')
-      ready = =>
-        @_log.info(container: container.id, 'ready')
-        callback(null, container)
-      setTimeout(ready, @_readyPause)
+
+      retryCount = 0
+      readyCheckCallback = (err=null, ready=true, retryMillis=100) =>
+        if err
+          @_log.error(err, 'ready check error')
+          callback(err, container)
+        else if ready
+          @_log.info(container: container.id, 'ready')
+          callback(null, container)
+        else
+          retryCount += 1
+          @_log.warn(container: container.id, wait: retryMillis, retries: retryCount, 'ready check retry')
+          retryReadyCheck = =>
+            @_readyCheck container, retryCount, readyCheckCallback
+          setTimeout retryReadyCheck, retryMillis
+
+      @_readyCheck container, retryCount, readyCheckCallback
 
   #
   # Private: Destroys a container. This function is used as the worker for the @_destroyQueue.

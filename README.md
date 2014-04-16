@@ -45,7 +45,15 @@ var pool = new Pool({
   // int milliseconds after container start that Docker Pool should
   // wait before returning the container in the acquire callback - this setting
   // allows some time for the docker container process to start
-  readyPause: 50,
+  readyCheck: function(container, callback) {
+    // perform test on container to ensure that it is ready to be used,
+    // such as connecting to a port. then invoke the callback to indicate
+    // readiness. if ready == false, use the retry interval so the pool
+    // can test readiness again later. If error != null, then retries will stop and
+    // the container acquisition will fail.
+
+    callback(null /* error */, true /* ready? */, 0 /* retry interval in milliseconds */);
+  },
 
   // options for containers
   container: {
@@ -118,7 +126,8 @@ process.on('SIGINT', function() {
 
 Docker cannot be run on Mac OS X. For this reason, you must use Vagrant which runs an instance of Ubuntu under a VM.
 
-* Use `vagrant up` to build launch the Vagrant instance
+* Use `vagrant up` to build provision and start the Vagrant instance
+* Use `vagrant reload` to reboot the Vagrant instance (so that the Linux 3.8 kernel will be loaded)
 * SSH to vagrant using `vagrant ssh`
 * Change to the directory containing this module using `cd /vagrant`
 * Install dependencies using `npm install`

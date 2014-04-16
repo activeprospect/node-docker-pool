@@ -50,3 +50,20 @@ describe 'Pool', ->
         pool.release(container1)
         pool.release(container2)
         done()
+
+  it 'should use ready check callback', (done) ->
+    retries = null
+    pool._readyCheck = (container, retryCount, callback) ->
+      retries = retryCount
+      if retryCount > 1
+        callback(null, true)
+      else
+        callback(null, false)
+
+    pool.acquire (err, container) ->
+      assert.equal retries, 2
+      pool.release(container)
+      done(err)
+
+
+
