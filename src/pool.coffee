@@ -36,7 +36,19 @@ class Pool
 
 
   acquire: (callback, priority) =>
-    @_pool.acquire callback, priority
+    retryOnError = (err, container) =>
+      if err
+        if container?
+          # ._log? makes it so we don't need a real container for tests
+          container._log?.warn('retry acquire')
+          @dispose container
+        else
+          @_log.warn('retry acquire')
+        @acquire callback, priority
+      else
+        callback(null, container)
+
+    @_pool.acquire retryOnError, priority
 
 
   release: (container) ->

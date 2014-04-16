@@ -65,5 +65,27 @@ describe 'Pool', ->
       pool.release(container)
       done(err)
 
+  it 'should retry on acquisition error', (done) ->
+    acquire = pool._pool.acquire
 
+    callCount = 0
+    disposedContainer = null
+
+    dispose = pool.dispose
+    pool.dispose = (container) ->
+      disposedContainer = container
+      pool.dispose = dispose
+
+    pool._pool.acquire = (callback, priority) ->
+      callCount += 1
+      if callCount == 1
+        callback(new Error('something bad happened'), 'mr. container')
+      else
+        acquire(callback, priority)
+
+    pool.acquire (err, container) ->
+      assert.equal disposedContainer, 'mr. container'
+      assert.equal callCount, 2
+      pool.release(container)
+      done(err)
 
