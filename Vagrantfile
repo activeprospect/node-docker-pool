@@ -18,7 +18,7 @@ Vagrant.configure("2") do |config|
     add-apt-repository ppa:chris-lea/node.js
     apt-get update
     apt-get install -y nodejs
-    apt-get install linux-image-generic-lts-raring linux-headers-generic-lts-raring
+    apt-get install -y linux-image-generic-lts-raring linux-headers-generic-lts-raring
     docker run activeprospect/docker-pool-test ls
     cd /vagrant
     npm install
